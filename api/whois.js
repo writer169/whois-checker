@@ -1,15 +1,13 @@
-const { WhoisJson } = require('@whoisjson/whoisjson');
-
 module.exports = async function handler(req, res) {
   // Enable CORS
-  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Content-Type', 'application/json');
 
   if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
+    return res.status(200).end();
   }
 
   if (req.method !== 'POST') {
@@ -17,6 +15,9 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    // Lazy load the package
+    const { WhoisJson } = await import('@whoisjson/whoisjson');
+    
     const { domain, accessKey } = req.body;
 
     // Check access key
@@ -25,19 +26,19 @@ module.exports = async function handler(req, res) {
     if (!validAccessKey) {
       return res.status(500).json({ 
         error: 'Server configuration error',
-        message: 'ACCESS_KEY not configured'
+        message: 'ACCESS_KEY environment variable is not set'
       });
     }
 
     if (!accessKey || accessKey !== validAccessKey) {
       return res.status(403).json({ 
         error: 'Access denied',
-        message: 'Invalid access key'
+        message: 'Invalid or missing access key'
       });
     }
 
     if (!domain) {
-      return res.status(400).json({ error: 'Domain is required' });
+      return res.status(400).json({ error: 'Domain parameter is required' });
     }
 
     // Clean the domain
@@ -52,7 +53,10 @@ module.exports = async function handler(req, res) {
     // Validate domain format
     const domainRegex = /^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,}$/;
     if (!domainRegex.test(cleanDomain)) {
-      return res.status(400).json({ error: 'Invalid domain format' });
+      return res.status(400).json({ 
+        error: 'Invalid domain format',
+        domain: cleanDomain
+      });
     }
 
     // Initialize WhoisJson client
@@ -61,14 +65,23 @@ module.exports = async function handler(req, res) {
     if (!apiKey) {
       return res.status(500).json({ 
         error: 'API key not configured',
-        message: 'Please set WHOISJSON_API_KEY environment variable in Vercel'
+        message: 'WHOISJSON_API_KEY environment variable is not set in Vercel'
       });
     }
 
     const whois = new WhoisJson({ apiKey });
 
     // Fetch WHOIS data
-    const whoisInfo = await whois.lookup(cleanDomain);
+    let whoisInfo = null;
+    try {
+      whoisInfo = await whois.lookup(cleanDomain);
+    } catch (err) {
+      return res.status(500).json({
+        error: 'WHOIS lookup failed',
+        message: err.message,
+        domain: cleanDomain
+      });
+    }
 
     // Optionally fetch DNS and SSL info
     let dnsInfo = null;
@@ -95,10 +108,11 @@ module.exports = async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Unexpected error:', error);
     return res.status(500).json({ 
-      error: 'Failed to fetch WHOIS information',
-      message: error.message 
+      error: 'Internal server error',
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
