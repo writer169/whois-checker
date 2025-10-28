@@ -1,0 +1,16 @@
+{
+  "name": "whois-checker",
+  "version": "1.0.0",
+  "description": "WHOIS domain checker application",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'No build step needed'"
+  },
+  "dependencies": {
+    "@whoisjson/whoisjson": "^1.0.4"
+  },
+  "devDependencies": {
+    "vercel": "^33.0.0"
+  }
+}
