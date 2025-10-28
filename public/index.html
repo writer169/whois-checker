@@ -391,6 +391,14 @@
                     })
                 });
 
+                // Check if response is JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Non-JSON response:', text);
+                    throw new Error('Ошибка сервера: получен неверный формат ответа. Проверьте консоль для деталей.');
+                }
+
                 const data = await response.json();
 
                 if (!response.ok) {
@@ -404,6 +412,7 @@
 
                 displayResults(data);
             } catch (err) {
+                console.error('Error details:', err);
                 showError(err.message);
             } finally {
                 loading.style.display = 'none';
