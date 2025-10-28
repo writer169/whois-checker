@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WHOIS Checker - Проверка доменов</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .access-denied {
+            background: white;
+            border-radius: 15px;
+            padding: 60px 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            text-align: center;
+            animation: fadeIn 0.6s ease-in;
+        }
+
+        .access-denied h1 {
+            color: #dc2626;
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+
+        .access-denied p {
+            color: #666;
+            font-size: 1.2em;
+            margin-bottom: 30px;
+        }
+
+        .access-denied .hint {
+            color: #999;
+            font-size: 0.9em;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            animation: fadeIn 0.6s ease-in;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .search-box {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .hint {
+            color: #666;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        .results {
+            display: none;
+            animation: fadeIn 0.6s ease-in;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card h2::before {
+            content: "●";
+            color: #4ade80;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .info-item {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 3px solid #667eea;
+        }
+
+        .info-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+            word-break: break-all;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin: 2px;
+        }
+
+        .status-active {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-available {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status-expired {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .error {
+            background: #fee2e2;
+            border: 2px solid #fca5a5;
+            color: #991b1b;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .list-items {
+            list-style: none;
+            padding: 0;
+        }
+
+        .list-items li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .list-items li:last-child {
+            border-bottom: none;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .input-group {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="app">
+        <!-- Content will be loaded here -->
+    </div>
+
+    <script>
+        const app = document.getElementById('app');
+        let accessKey = null;
+
+        // Check access key from URL
+        function checkAccess() {
+            const params = new URLSearchParams(window.location.search);
+            accessKey = params.get('key');
+
+            if (!accessKey) {
+                showAccessDenied();
+                return false;
+            }
+            
+            showApp();
+            return true;
+        }
+
+        function showAccessDenied() {
+            app.innerHTML = `
+                <div class="access-denied">
+                    <h1>🔒</h1>
+                    <h2 style="color: #333; margin-bottom: 20px;">Доступ запрещён</h2>
+                    <p>Для доступа к приложению необходим ключ доступа</p>
+                    <div class="hint">Добавьте параметр ?key=ВАШ_КЛЮЧ к URL</div>
+                </div>
+            `;
+        }
+
+        function showApp() {
+            app.innerHTML = `
+                <div class="header">
+                    <h1>🔍 WHOIS Checker</h1>
+                    <p>Проверьте информацию о любом домене</p>
+                </div>
+
+                <div class="search-box">
+                    <div class="input-group">
+                        <input 
+                            type="text" 
+                            id="domainInput" 
+                            placeholder="Введите адрес сайта (например: example.com или https://www.example.com)"
+                            autocomplete="off"
+                        >
+                        <button id="checkBtn" onclick="checkDomain()">Проверить</button>
+                    </div>
+                    <div class="hint">
+                        💡 Можете вводить полный URL - мы автоматически извлечём домен
+                    </div>
+                </div>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Загружаем информацию о домене...</p>
+                </div>
+
+                <div class="error" id="error"></div>
+
+                <div class="results" id="results"></div>
+            `;
+
+            // Add event listener for Enter key
+            const input = document.getElementById('domainInput');
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    checkDomain();
+                }
+            });
+        }
+
+        async function checkDomain() {
+            const input = document.getElementById('domainInput');
+            const checkBtn = document.getElementById('checkBtn');
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const results = document.getElementById('results');
+
+            const domain = input.value.trim();
+            
+            if (!domain) {
+                showError('Пожалуйста, введите адрес сайта');
+                return;
+            }
+
+            // Show loading
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            results.style.display = 'none';
+            checkBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/whois', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        domain,
+                        accessKey 
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    if (response.status === 403) {
+                        showError('Неверный ключ доступа. Проверьте URL.');
+                    } else {
+                        throw new Error(data.message || data.error || 'Ошибка при получении данных');
+                    }
+                    return;
+                }
+
+                displayResults(data);
+            } catch (err) {
+                showError(err.message);
+            } finally {
+                loading.style.display = 'none';
+                checkBtn.disabled = false;
+            }
+        }
+
+        function showError(message) {
+            const error = document.getElementById('error');
+            error.textContent = '❌ ' + message;
+            error.style.display = 'block';
+        }
+
+        function displayResults(data) {
+            const results = document.getElementById('results');
+            const { domain, whois, dns, ssl } = data;
+            
+            let html = '';
+
+            // WHOIS Information
+            if (whois) {
+                html += `
+                    <div class="card">
+                        <h2>Информация о домене</h2>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">Домен</div>
+                                <div class="info-value">${whois.name || domain}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Статус регистрации</div>
+                                <div class="info-value">
+                                    <span class="status-badge ${whois.registered ? 'status-active' : 'status-available'}">
+                                        ${whois.registered ? '✓ Зарегистрирован' : '○ Доступен'}
+                                    </span>
+                                </div>
+                            </div>
+                            ${whois.created ? `
+                            <div class="info-item">
+                                <div class="info-label">Дата создания</div>
+                                <div class="info-value">${formatDate(whois.created)}</div>
+                            </div>
+                            ` : ''}
+                            ${whois.expires ? `
+                            <div class="info-item">
+                                <div class="info-label">Дата истечения</div>
+                                <div class="info-value">${formatDate(whois.expires)}</div>
+                            </div>
+                            ` : ''}
+                            ${whois.registrar?.name ? `
+                            <div class="info-item">
+                                <div class="info-label">Регистратор</div>
+                                <div class="info-value">${whois.registrar.name}</div>
+                            </div>
+                            ` : ''}
+                            ${whois.ips ? `
+                            <div class="info-item">
+                                <div class="info-label">IP адрес</div>
+                                <div class="info-value">${whois.ips}</div>
+                            </div>
+                            ` : ''}
+                        </div>
+                        
+                        ${whois.status && whois.status.length > 0 ? `
+                        <div style="margin-top: 20px;">
+                            <div class="info-label" style="margin-bottom: 10px;">Статусы домена</div>
+                            <div>
+                                ${whois.status.map(s => `<span class="status-badge status-active">${s}</span>`).join('')}
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        ${whois.nameserver && whois.nameserver.length > 0 ? `
+                        <div style="margin-top: 20px;">
+                            <div class="info-label" style="margin-bottom: 10px;">Name Servers</div>
+                            <ul class="list-items">
+                                ${whois.nameserver.map(ns => `<li>${ns}</li>`).join('')}
+                            </ul>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+
+            // DNS Information
+            if (dns && dns.records) {
+                html += `
+                    <div class="card">
+                        <h2>DNS записи</h2>
+                        ${dns.records.a && dns.records.a.length > 0 ? `
+                        <div class="info-item" style="margin-bottom: 15px;">
+                            <div class="info-label">A записи (IPv4)</div>
+                            <ul class="list-items">
+                                ${dns.records.a.map(ip => `<li>${ip}</li>`).join('')}
+                            </ul>
+                        </div>
+                        ` : ''}
+                        
+                        ${dns.records.aaaa && dns.records.aaaa.length > 0 ? `
+                        <div class="info-item" style="margin-bottom: 15px;">
+                            <div class="info-label">AAAA записи (IPv6)</div>
+                            <ul class="list-items">
+                                ${dns.records.aaaa.map(ip => `<li>${ip}</li>`).join('')}
+                            </ul>
+                        </div>
+                        ` : ''}
+                        
+                        ${dns.records.mx && dns.records.mx.length > 0 ? `
+                        <div class="info-item" style="margin-bottom: 15px;">
+                            <div class="info-label">MX записи (почтовые серверы)</div>
+                            <ul class="list-items">
+                                ${dns.records.mx.map(mx => `<li>Приоритет: ${mx.priority} - ${mx.exchange}</li>`).join('')}
+                            </ul>
+                        </div>
+                        ` : ''}
+                        
+                        ${dns.records.ns && dns.records.ns.length > 0 ? `
+                        <div class="info-item">
+                            <div class="info-label">NS записи</div>
+                            <ul class="list-items">
+                                ${dns.records.ns.map(ns => `<li>${ns}</li>`).join('')}
+                            </ul>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+
+            // SSL Certificate Information
+            if (ssl) {
+                html += `
+                    <div class="card">
+                        <h2>SSL сертификат</h2>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">Статус</div>
+                                <div class="info-value">
+                                    <span class="status-badge ${ssl.valid ? 'status-active' : 'status-expired'}">
+                                        ${ssl.valid ? '✓ Действителен' : '✗ Истёк'}
+                                    </span>
+                                </div>
+                            </div>
+                            ${ssl.issuer?.organization ? `
+                            <div class="info-item">
+                                <div class="info-label">Издатель</div>
+                                <div class="info-value">${ssl.issuer.organization}</div>
+                            </div>
+                            ` : ''}
+                            ${ssl.validFrom ? `
+                            <div class="info-item">
+                                <div class="info-label">Действителен с</div>
+                                <div class="info-value">${formatDate(ssl.validFrom)}</div>
+                            </div>
+                            ` : ''}
+                            ${ssl.validTo ? `
+                            <div class="info-item">
+                                <div class="info-label">Действителен до</div>
+                                <div class="info-value">${formatDate(ssl.validTo)}</div>
+                            </div>
+                            ` : ''}
+                        </div>
+                        
+                        ${ssl.subjectAlternativeNames && ssl.subjectAlternativeNames.length > 0 ? `
+                        <div style="margin-top: 20px;">
+                            <div class="info-label" style="margin-bottom: 10px;">Альтернативные имена</div>
+                            <div>
+                                ${ssl.subjectAlternativeNames.map(name => `<span class="status-badge status-available">${name}</span>`).join('')}
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+
+            results.innerHTML = html;
+            results.style.display = 'block';
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('ru-RU', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+
+        // Initialize app on load
+        checkAccess();
+    </script>
+</body>
+</html>
