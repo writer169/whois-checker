@@ -20,8 +20,12 @@ module.exports = async function handler(req, res) {
     
     const { domain, accessKey } = req.body;
 
+    console.log('Received request with accessKey:', accessKey ? 'Present' : 'Missing');
+
     // Check access key
     const validAccessKey = process.env.ACCESS_KEY;
+    
+    console.log('Environment ACCESS_KEY:', validAccessKey ? 'Set' : 'Not set');
     
     if (!validAccessKey) {
       return res.status(500).json({ 
@@ -30,12 +34,22 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    if (!accessKey || accessKey !== validAccessKey) {
+    if (!accessKey) {
       return res.status(403).json({ 
         error: 'Access denied',
-        message: 'Invalid or missing access key'
+        message: 'No access key provided'
       });
     }
+
+    if (accessKey !== validAccessKey) {
+      console.log('Key mismatch - Received:', accessKey, 'Expected:', validAccessKey);
+      return res.status(403).json({ 
+        error: 'Access denied',
+        message: 'Invalid access key'
+      });
+    }
+
+    console.log('Access key validated successfully');
 
     if (!domain) {
       return res.status(400).json({ error: 'Domain parameter is required' });
