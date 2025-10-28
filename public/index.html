@@ -298,25 +298,13 @@
             const params = new URLSearchParams(window.location.search);
             accessKey = params.get('key');
 
-            console.log('Access key from URL:', accessKey ? 'Present' : 'Missing');
-
             if (!accessKey) {
                 showAccessDenied();
                 return false;
             }
             
-            // Save to sessionStorage for persistence
-            sessionStorage.setItem('accessKey', accessKey);
             showApp();
             return true;
-        }
-
-        // Try to restore access key from session if not in URL
-        function restoreAccessKey() {
-            if (!accessKey) {
-                accessKey = sessionStorage.getItem('accessKey');
-                console.log('Restored access key from session:', accessKey ? 'Present' : 'Missing');
-            }
         }
 
         function showAccessDenied() {
@@ -385,16 +373,6 @@
                 return;
             }
 
-            // Restore access key if needed
-            restoreAccessKey();
-
-            if (!accessKey) {
-                showError('Ключ доступа не найден. Пожалуйста, откройте страницу с параметром ?key=ВАШ_КЛЮЧ');
-                return;
-            }
-
-            console.log('Sending request with key:', accessKey.substring(0, 3) + '...');
-
             // Show loading
             loading.style.display = 'block';
             error.style.display = 'none';
@@ -413,22 +391,11 @@
                     })
                 });
 
-                console.log('Response status:', response.status);
-
-                // Check if response is JSON
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    const text = await response.text();
-                    console.error('Non-JSON response:', text);
-                    throw new Error('Ошибка сервера: получен неверный формат ответа. Проверьте консоль для деталей.');
-                }
-
                 const data = await response.json();
-                console.log('Response data:', data);
 
                 if (!response.ok) {
                     if (response.status === 403) {
-                        showError('Неверный ключ доступа. Убедитесь, что переменная ACCESS_KEY установлена в Vercel и совпадает с ключом в URL.');
+                        showError('Неверный ключ доступа. Проверьте URL.');
                     } else {
                         throw new Error(data.message || data.error || 'Ошибка при получении данных');
                     }
@@ -437,7 +404,6 @@
 
                 displayResults(data);
             } catch (err) {
-                console.error('Error details:', err);
                 showError(err.message);
             } finally {
                 loading.style.display = 'none';
@@ -501,11 +467,14 @@
                             ` : ''}
                         </div>
                         
-                        ${whois.status && whois.status.length > 0 ? `
+                        ${whois.status ? `
                         <div style="margin-top: 20px;">
                             <div class="info-label" style="margin-bottom: 10px;">Статусы домена</div>
                             <div>
-                                ${whois.status.map(s => `<span class="status-badge status-active">${s}</span>`).join('')}
+                                ${Array.isArray(whois.status) 
+                                    ? whois.status.map(s => `<span class="status-badge status-active">${s}</span>`).join('') 
+                                    : `<span class="status-badge status-active">${whois.status}</span>`
+                                }
                             </div>
                         </div>
                         ` : ''}
